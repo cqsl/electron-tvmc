@@ -15,10 +15,26 @@ import jax
 import numpy as np
 import jax.numpy as jnp
 from netket.utils.mpi import mpi_sum, n_nodes, mpi_allgather_jax, mpi, MPI_jax_comm, mpi_bcast_jax
-from netket.jax import mpi_split
 import netket as nk
+import netket.jax as nkjax
 import json
-import copy
+
+def array_init(arr, noise=0):
+    def _array_init(key, shape, dtype):
+        if len(shape) == len(arr.shape) + 1 and shape[-1] == 2:
+            complex_params = True
+            shape = shape[:-1]
+        else:
+            assert shape == arr.shape, f"requested shape {shape} for array {arr.shape}"
+            complex_params = False
+        out = arr.astype(dtype)
+        if complex_params:
+            out = jnp.stack([out, jnp.zeros_like(out)], axis=-1)
+        out += jax.random.normal(key, shape=out.shape, dtype=dtype) * noise
+        out = out.astype(dtype)
+        return out
+
+    return _array_init
 
 
 def pytree_array_string(tree, indent=4):
@@ -271,7 +287,7 @@ def real_dtype(dtype):
             raise TypeError(f"Unknown complex dtype {dtype}.")
     else:
         return np.dtype(dtype)
-    
+
 def complex_dtype(dtype):
     if is_complex_dtype(dtype):
         return np.dtype(dtype)
@@ -282,7 +298,7 @@ def complex_dtype(dtype):
             return np.dtype("complex128")
         else:
             raise TypeError(f"Unknown complex dtype {dtype}.")
-    
+
 def nm_to_au(x):
     return x*18.8972598858
 
@@ -319,8 +335,8 @@ def print_discrete_samples(x, n_print=25):
         print_mpi("".join(xi_up.astype(str).tolist()) + "|" + "".join(xi_dn.astype(str).tolist()), " --> ", ci)
     print_mpi(f"... [only first {n_print} shown]")
     print_mpi(flush=True)
-    
-    
+
+
 def tree_size_cumsum(tree):
     p = jax.tree_util.tree_map(np.size, tree)
     p = flax.traverse_util.flatten_dict(p, keep_empty_nodes=False, is_leaf=None, sep="/")
@@ -409,8 +425,7 @@ def copy_variational_state(vs, n_hot=0, copy_samples=True, **kwargs):
         return copy_vs
     else:
         raise NotImplementedError(f"cannot copy this kind of state {type(vs)}")
-    
-    
+
 
 def burn_in(vs, n=10):
     for _ in range(n):
@@ -427,7 +442,7 @@ def add_noise_to_param_dict(key, d, stddev=None):
     keys = jax.random.split(key, n_leaves)
     key_tree = jax.tree_util.tree_unflatten(tree_def, keys)
     return jax.tree_util.tree_map(lambda x, k: x + stddev*jax.random.normal(k, shape=x.shape), d, key_tree)
-    
+
 
 @jax.jit 
 def safe_log(x):
@@ -487,7 +502,7 @@ def mpi_max_jax(x, *, token=None, comm=MPI_jax_comm):
         import mpi4jax
 
         return mpi4jax.allreduce(x, op=MPI.MAX, comm=comm, token=token)
-    
+
 
 def mpi_mean_jax(x, *, token=None, comm=MPI_jax_comm):
     """
