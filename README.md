@@ -10,3 +10,5 @@ This is code related to the paper:
   year={2024}
 }
 ```
+
+use jupytext to open the scripts as notebooks
