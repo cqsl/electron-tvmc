@@ -11,4 +11,6 @@ This is code related to the paper:
 }
 ```
 
-use jupytext to open the scripts as notebooks
+use jupytext to open the scripts as notebooks.
+
+The tre-tVMC method can be found on a separate GitHub: https://github.com/cqsl/tre-tVMC
