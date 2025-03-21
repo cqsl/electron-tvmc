@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.15.1
+#       jupytext_version: 1.16.7
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -124,8 +124,8 @@ sa = sa_fn(hi, n_chains=64, n_sweeps=hi.size*5, dtype=real_dtype(DTYPE))
 print("SAMPLER = ", sa)
 # -
 
-n_samples = 1024 # higher in practice
-vs = nk.vqs.MCState(sa, ma, n_samples=n_samples, n_discard_per_chain=4, chunk_size=16)
+n_samples = 8*1024 # higher in practice
+vs = nk.vqs.MCState(sa, ma, n_samples=n_samples, n_discard_per_chain=4, sweep_size=6, chunk_size=16)
 
 
 print("n_parameters:", vs.n_parameters)
@@ -178,7 +178,7 @@ print("n_parameters:", vs.n_parameters)
 
 gs.run(total_steps, out='vmc')
 
-vs.n_samples = 1024 #512*1024
+vs.n_samples = 512*1024 # need much higher values here
 print("n_samples for tevo:", vs.n_samples)
 
 # run hot
@@ -196,6 +196,13 @@ E0expect = vs.expect(ham)
 dt = 1e-2
 # +
 kappa_t = 2.0
+
+
+def interpret_kappa(kappa):
+    omega = 1.0
+    rs = 1.0 # tmp change
+    scale = np.sqrt(N)#
+    return kappa, rs, omega, effective_scale
 
 kappa_t, rs_t, omega_t, effective_scale_t = interpret_kappa(kappa_t)
 
@@ -226,7 +233,7 @@ integrator = Heun(
 print("Integrator = ", integrator)
 
 qgt = nk.optimizer.qgt.QGTJacobianPyTree(holomorphic=True, diag_shift=0, diag_scale=0)
-solver = partial(smooth_svd, acond=1e-8, rcond=1e-14)
+solver = partial(smooth_svd, acond=1e-7, rcond=1e-14)
 print("QGT = ", qgt)
 
 
@@ -253,6 +260,8 @@ te.run(
     show_progress=True,
 )
 # -
+
+
 
 
 
